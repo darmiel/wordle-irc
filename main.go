@@ -95,6 +95,10 @@ func main() {
 					channel := split[1]
 					word := split[2]
 
+					if !checkWordValid(word) {
+						return
+					}
+
 					_, ok := States[channel]
 					if !ok {
 						_ = c.Write("JOIN " + channel)
@@ -176,6 +180,16 @@ func InWord(word string, c int32) bool {
 		}
 	}
 	return false
+}
+
+// checkWordValid checks if the given word is a Heterogram
+func checkWordValid(word string) bool {
+	for _, char := range word {
+		if strings.Count(word, string(char)) > 1 {
+			return false
+		}
+	}
+	return true
 }
 
 func Color(a string) string {
