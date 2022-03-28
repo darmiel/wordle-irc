@@ -184,12 +184,14 @@ func InWord(word string, c int32) bool {
 
 // checkWordValid checks if the given word is a Heterogram
 func checkWordValid(word string) bool {
+	u := make(map[rune]bool)
 	for _, char := range word {
-		if strings.Count(word, string(char)) > 1 {
+		if _, ok := u[rune(char)]; ok {
 			return false
 		}
+		u[rune(char)] = true
 	}
-	return true
+	return false
 }
 
 func Color(a string) string {
