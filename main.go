@@ -79,9 +79,10 @@ func main() {
 			case "PRIVMSG":
 				var message = m.Trailing()
 
-				if !c.FromChannel(m) { // ignore private messages
+				if !c.FromChannel(m) {
 					fmt.Printf("Got private message: %+v\n", m)
-					// set new message
+
+					// set new word
 					if !strings.HasPrefix(message, "set ") {
 						return
 					}
