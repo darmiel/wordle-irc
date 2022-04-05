@@ -70,7 +70,7 @@ func main() {
 				)
 
 				// private message: admin command mode
-				if c.FromChannel(m) {
+				if !c.FromChannel(m) {
 					if err := app.Run(strings.Split(message, " ")); err != nil {
 						log.Println("cannot run private message parsing:", err)
 						return
@@ -119,6 +119,8 @@ func start(channel Channel, word Word, client *irc.Client) error {
 		tries:   make(map[string]uint),
 		client:  client,
 		active:  true,
+		hard:    true,
+		guessed: make([]rune, len(word)),
 	}
 
 	// append game

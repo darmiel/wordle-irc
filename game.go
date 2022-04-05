@@ -16,6 +16,9 @@ type Game struct {
 	tries   map[string]uint
 	client  *irc.Client
 	active  bool
+
+	guessed []rune
+	hard    bool
 }
 
 func (g *Game) addTry(user string) uint {
@@ -61,7 +64,7 @@ func (g *Game) hello() (err error) {
 	log.Println("send messages")
 	// print hello
 	return g.sendChannelMessages(
-		"Hello 👋 I am a Wordle bot for the cool Qwiri IRC.",
+		"Hello 👋 Let's play WordleIIRC!",
 		fmt.Sprintf(
 			"The current word is %s%d%s characters long.",
 			ColorCyan.String(), len(g.word), StyleReset.String(),
@@ -86,8 +89,32 @@ func (g *Game) handleGuess(guess Word, user string) error {
 	if len(g.word) != len(guess) {
 		return g.sendChannelMessage(fmt.Sprintf(
 			"%s :: You're entered a %d (req %d) char long word. (@%s)",
-			ColorRedBG.Enclose("🦑 ERR"), len(guess), len(g.word), user,
+			ColorRedBG.Enclose("ERR"), len(guess), len(g.word), user,
 		))
+	}
+
+	// check hard mode
+	if g.hard {
+		for i, gu := range guess {
+			co := g.guessed[i]
+			if co == 0 { // not guessed
+				continue
+			}
+			if gu != co {
+				return g.sendChannelMessage(fmt.Sprintf(
+					"%s :: You're playing %shard mode%s. This word doesn't match your guesses.",
+					ColorRedBG.Enclose("ERR"), ColorCyan.String(), StyleReset.String(),
+				))
+			}
+		}
+	}
+
+	// save correct guesses for hard mode
+	for i, gu := range guess {
+		co := g.word[i]
+		if uint8(gu) == co {
+			g.guessed[i] = gu
+		}
 	}
 
 	// add try for user
@@ -101,8 +128,6 @@ func (g *Game) handleGuess(guess Word, user string) error {
 	)); err != nil {
 		return err
 	}
-
-	log.Println("Guess:", guess, ":: Word:", g.word)
 
 	// check if the guessed word is correct
 	if guess == g.word {
