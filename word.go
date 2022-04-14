@@ -3,15 +3,21 @@ package main
 import (
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 type Word string
 
-func (w Word) Normalize() Word {
-	return Word(strings.TrimSpace(strings.ToLower(string(w))))
+func wordOf(w string) Word {
+	return Word(strings.TrimSpace(strings.ToLower(w)))
+}
+
+func (w Word) At(idx int) rune {
+	return rune(string(w)[idx])
 }
 
 func (w Word) ContainsChar(char rune) bool {
+	char = unicode.ToLower(char)
 	for _, r := range w {
 		if r == char {
 			return true
@@ -21,9 +27,8 @@ func (w Word) ContainsChar(char rune) bool {
 }
 
 func (w Word) ColorForCharAt(index int, char rune) Color {
-	correctChar := rune(w[index])
 	// correct char at correct index
-	if correctChar == char {
+	if w.At(index) == char {
 		return ColorGreenBG
 	}
 	// correct char at incorrect index
@@ -42,7 +47,7 @@ func (w Word) Print(input Word) string {
 		if bob.Len() > 0 {
 			bob.WriteRune(' ')
 		}
-		guessedChar := rune(input[i])
+		guessedChar := input.At(i)
 		// background color for char
 		color := w.ColorForCharAt(i, guessedChar)
 		bob.WriteString(color.String())
@@ -55,7 +60,6 @@ func (w Word) Print(input Word) string {
 }
 
 // IsHeterogram checks if the given word is a Heterogram
-// NOTE: Input is required to be normalized
 func (w Word) IsHeterogram() bool {
 	u := make(map[rune]bool)
 	for _, char := range w {

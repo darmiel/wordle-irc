@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var games = make(map[string][]*Game)
+var games = make(map[Channel][]*Game)
 
 func main() {
 	conn, err := net.Dial("tcp", "irc.d2a.io:6667")
@@ -56,7 +56,7 @@ func main() {
 			switch m.Command {
 			case "001":
 				log.Println("001")
-				if err := start("wordle", "FUCHS", c); err != nil {
+				if err := start(channelOf("wordle"), wordOf("FUCHS"), c); err != nil {
 					fmt.Println("Cannot start wordle test:", err)
 				}
 
@@ -66,7 +66,7 @@ func main() {
 			case "PRIVMSG":
 				var (
 					message = m.Trailing()
-					channel = Channel(m.Params[0])
+					channel = channelOf(m.Params[0])
 				)
 
 				// private message: admin command mode
@@ -77,7 +77,7 @@ func main() {
 					}
 				}
 
-				log.Println("PRIVMSG", channel.String(), "::", message)
+				log.Println("PRIVMSG", string(channel), "::", message)
 
 				// no game found in channel
 				var game = findGameInChannel(channel)
@@ -90,7 +90,7 @@ func main() {
 					return
 				}
 
-				guess := Word(strings.SplitN(message, " ", 2)[1]).Normalize()
+				guess := wordOf(strings.SplitN(message, " ", 2)[1])
 				if guess == "" {
 					return
 				}
@@ -112,10 +112,9 @@ func main() {
 }
 
 func start(channel Channel, word Word, client *irc.Client) error {
-	c := channel.Normalize()
 	game := &Game{
-		word:    word.Normalize(),
-		channel: c,
+		word:    word,
+		channel: channel,
 		tries:   make(map[string]uint),
 		client:  client,
 		active:  true,
@@ -124,9 +123,9 @@ func start(channel Channel, word Word, client *irc.Client) error {
 	}
 
 	// append game
-	gs, _ := games[c]
+	gs, _ := games[channel]
 	gs = append(gs, game)
-	games[c] = gs
+	games[channel] = gs
 
 	return game.hello()
 }

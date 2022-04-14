@@ -1,15 +1,21 @@
 package main
 
-import "strings"
+import (
+	"gopkg.in/irc.v3"
+	"strings"
+)
 
 type Channel string
 
+func channelOf(channel string) Channel {
+	return Channel("#" + strings.TrimLeft(strings.TrimSpace(strings.ToLower(channel)), "#"))
+}
+
 func findGameInChannel(channel Channel) *Game {
-	c := channel.Normalize()
-	gs, ok := games[c]
+	gs, ok := games[channel]
 	if ok {
 		for _, game := range gs {
-			if game.channel == c && game.active {
+			if game.channel == channel && game.active {
 				return game
 			}
 		}
@@ -17,14 +23,12 @@ func findGameInChannel(channel Channel) *Game {
 	return nil
 }
 
-func (c Channel) Normalize() string {
-	channel := string(c)
-	for strings.HasPrefix(channel, "#") {
-		channel = channel[1:]
-	}
-	return strings.TrimSpace(strings.ToLower(channel))
-}
-
-func (c Channel) String() string {
-	return "#" + c.Normalize()
+func (c Channel) Send(client *irc.Client, msg string) error {
+	return client.WriteMessage(&irc.Message{
+		Command: "PRIVMSG",
+		Params: []string{
+			string(c),
+			msg,
+		},
+	})
 }

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"gopkg.in/irc.v3"
-	"log"
 	"strings"
 )
 
@@ -12,7 +11,7 @@ var ErrGameInactive = errors.New("game is inactive")
 
 type Game struct {
 	word    Word
-	channel string // normalized channel
+	channel Channel
 	tries   map[string]uint
 	client  *irc.Client
 	active  bool
@@ -37,16 +36,19 @@ func (g *Game) sumTries() uint {
 }
 
 func (g *Game) sendChannelMessage(msg string) error {
-	return g.client.WriteMessage(&irc.Message{
-		Command: "PRIVMSG",
-		Params: []string{
-			"#" + g.channel,
-			msg,
-		},
-	})
+	return g.channel.Send(g.client, msg)
 }
 
-func (g *Game) sendChannelMessages(msg ...string) error {
+func (g *Game) reply(user string, msg ...string) (err error) {
+	for _, m := range msg {
+		if err = g.send(user + ": " + m); err != nil {
+			return
+		}
+	}
+	return nil
+}
+
+func (g *Game) send(msg ...string) error {
 	for _, m := range msg {
 		if err := g.sendChannelMessage(m); err != nil {
 			return err
@@ -57,20 +59,18 @@ func (g *Game) sendChannelMessages(msg ...string) error {
 
 func (g *Game) hello() (err error) {
 	// join channel
-	log.Println("JOIN", g.channel)
-	if err = g.client.Write("JOIN #" + g.channel); err != nil {
+	if err = g.client.Write("JOIN " + string(g.channel)); err != nil {
 		return
 	}
-	log.Println("send messages")
 	// print hello
-	return g.sendChannelMessages(
+	return g.send(
 		"Hello 👋 Let's play WordleIIRC!",
 		fmt.Sprintf(
 			"The current word is %s%d%s characters long.",
 			ColorCyan.String(), len(g.word), StyleReset.String(),
 		),
 		fmt.Sprintf(
-			"Use %sguess <word>%s to guess a word.",
+			"Use %sg <word>%s to guess a word.",
 			ColorCyan.String(), StyleReset.String(),
 		),
 		fmt.Sprintf(
@@ -87,9 +87,9 @@ func (g *Game) handleGuess(guess Word, user string) error {
 
 	// check if length's matches
 	if len(g.word) != len(guess) {
-		return g.sendChannelMessage(fmt.Sprintf(
-			"%s :: You're entered a %d (req %d) char long word. (@%s)",
-			ColorRedBG.Enclose("ERR"), len(guess), len(g.word), user,
+		return g.reply(user, fmt.Sprintf(
+			"%s :: You're entered a %d (req %d) char long word.",
+			ColorRedBG.Enclose("ERR"), len(guess), len(g.word),
 		))
 	}
 
@@ -101,7 +101,7 @@ func (g *Game) handleGuess(guess Word, user string) error {
 				continue
 			}
 			if gu != co {
-				return g.sendChannelMessage(fmt.Sprintf(
+				return g.reply(user, fmt.Sprintf(
 					"%s :: You're playing %shard mode%s. This word doesn't match your guesses.",
 					ColorRedBG.Enclose("ERR"), ColorCyan.String(), StyleReset.String(),
 				))
@@ -110,9 +110,9 @@ func (g *Game) handleGuess(guess Word, user string) error {
 	}
 
 	// save correct guesses for hard mode
-	for i, gu := range guess {
-		co := g.word[i]
-		if uint8(gu) == co {
+	for i := range guess {
+		gu := guess.At(i)
+		if g.word.At(i) == gu {
 			g.guessed[i] = gu
 		}
 	}
@@ -123,7 +123,7 @@ func (g *Game) handleGuess(guess Word, user string) error {
 
 	if err := g.sendChannelMessage(fmt.Sprintf(
 		"%s :: %s",
-		ColorCyanBG.Enclose(fmt.Sprintf("🔰 [%d#%d]", tries, sumTries)),
+		ColorCyanBG.Enclose(fmt.Sprintf("🔰 [u:%d;s:%d]", tries, sumTries)),
 		g.word.Print(guess),
 	)); err != nil {
 		return err
