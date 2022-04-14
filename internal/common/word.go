@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"fmt"
@@ -6,17 +6,25 @@ import (
 	"unicode"
 )
 
-type Word string
-
-func wordOf(w string) Word {
-	return Word(strings.TrimSpace(strings.ToLower(w)))
+type Word interface {
+	Word() string
+	At(idx int) rune
+	ContainsChar(char rune) bool
+	ColorForCharAt(index int, char rune) Color
+	Print(input Word) string
 }
 
-func (w Word) At(idx int) rune {
+type word string
+
+func (w word) Word() string {
+	return string(w)
+}
+
+func (w word) At(idx int) rune {
 	return rune(string(w)[idx])
 }
 
-func (w Word) ContainsChar(char rune) bool {
+func (w word) ContainsChar(char rune) bool {
 	char = unicode.ToLower(char)
 	for _, r := range w {
 		if r == char {
@@ -26,7 +34,7 @@ func (w Word) ContainsChar(char rune) bool {
 	return false
 }
 
-func (w Word) ColorForCharAt(index int, char rune) Color {
+func (w word) ColorForCharAt(index int, char rune) Color {
 	// correct char at correct index
 	if w.At(index) == char {
 		return ColorGreenBG
@@ -41,7 +49,7 @@ func (w Word) ColorForCharAt(index int, char rune) Color {
 
 // Print returns the word as a colored string
 // NOTE: input is required to be normalized
-func (w Word) Print(input Word) string {
+func (w word) Print(input Word) string {
 	var bob strings.Builder
 	for i := range w {
 		if bob.Len() > 0 {
@@ -60,7 +68,7 @@ func (w Word) Print(input Word) string {
 }
 
 // IsHeterogram checks if the given word is a Heterogram
-func (w Word) IsHeterogram() bool {
+func (w word) IsHeterogram() bool {
 	u := make(map[rune]bool)
 	for _, char := range w {
 		if _, ok := u[char]; ok {
@@ -69,4 +77,10 @@ func (w Word) IsHeterogram() bool {
 		u[char] = true
 	}
 	return false
+}
+
+///
+
+func WordOf(w string) Word {
+	return word(strings.TrimSpace(strings.ToLower(w)))
 }
